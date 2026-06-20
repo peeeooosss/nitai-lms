@@ -1,0 +1,32 @@
+Execution Plan
+Phase 1: Fix All Broken Buttons (5 files)
+1. Hero "Watch Demo" — src/pages/_components/Hero.tsx:117-123
+- Connect to open a YouTube modal or link to a demo video URL
+2. CTA "Download Brochure" — src/pages/_components/CtaSection.tsx:52-58
+- Connect to /contact (same as "Get a Free Demo") or trigger a brochure PDF download
+3. Lab Page "Request Lab Setup" + "Download Brochure" + "Get a Free Proposal" — src/pages/labs/_components/LabPageTemplate.tsx:70-76, 276-278
+- All three link to /contact with pre-filled subject via URL params (e.g., /contact?subject=lab-setup&lab=ai)
+4. Teachers Training "Download Brochure" — src/pages/teachers-training/page.tsx:164-166
+- Link to /contact
+5. Footer Privacy/Terms/Cookie — src/pages/_components/Footer.tsx:148-150
+- Create simple placeholder pages, or link to /contact
+6. Contact Page Support Cards — src/pages/contact/page.tsx:356-372
+- Make "WhatsApp Support" open WhatsApp link, "Demo Request" scroll to form, "International Inquiries" open email
+Phase 2: Kid-Friendly Visual Upgrades
+7. Animated Cat Mascot on Landing Page — New component src/pages/_components/Mascot.tsx
+- Reuse the SVG cat from the Picto Lab Stage
+- Place it in the bottom-right corner of the Hero section
+- Animate it with idle animations (gentle bounce, blink, occasional wave)
+8. Confetti on Actions — Add canvas-confetti package or use a lightweight confetti effect
+- Trigger on: clicking "Get Started", completing a Picto Lab challenge, page load celebrations
+9. Playful Hover Effects — Add bounce/wiggle animations to buttons and cards across the landing page
+- Use motion to add fun hover states (scale, rotation, color shift)
+10. Fun 404 Page — src/pages/NotFound.tsx
+- Add the animated cat mascot saying "Meow... this page doesn't exist!"
+- Add a playful "Go Home" button with confetti
+11. Gamification Badges on Landing Page — Add a floating points/badges indicator
+Phase 3: Picto Lab Specific
+12. Fix "Repeat" Block — src/pages/products/picto-lab/_lib/engine.ts
+- The Repeat block is defined but does nothing — implement the loop logic
+13. Challenge Completion Celebration — src/pages/products/picto-lab/playground.tsx
+- Add confetti burst when a challenge is completed

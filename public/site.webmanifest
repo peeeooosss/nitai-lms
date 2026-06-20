@@ -1,0 +1,24 @@
+{
+  "name": "NITAI AI Lab",
+  "short_name": "NITAI AI Lab",
+  "description": "AI for Social Good. AI for Spiritual Good. World-class AI, Robotics, STEM & Emerging Tech labs for schools, colleges and universities.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
