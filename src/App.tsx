@@ -21,6 +21,9 @@ import PictoLabPlayground from "./pages/products/picto-lab/playground.tsx";
 import PictoLabChallenges from "./pages/products/picto-lab/challenges.tsx";
 import PictoLabSubscribe from "./pages/products/picto-lab/subscribe.tsx";
 import PythonLabPage from "./pages/products/PythonLab.tsx";
+import PythonLabPlayground from "./pages/products/python-lab/playground.tsx";
+import PythonLabChallenges from "./pages/products/python-lab/challenges.tsx";
+import PythonLabSubscribe from "./pages/products/python-lab/subscribe.tsx";
 import LmsPage from "./pages/products/Lms.tsx";
 
 // Services & Solutions
@@ -71,6 +74,9 @@ export default function App() {
           <Route path="/products/picto-lab/challenges" element={<PictoLabChallenges />} />
           <Route path="/products/picto-lab/subscribe" element={<PictoLabSubscribe />} />
           <Route path="/products/python-lab" element={<PythonLabPage />} />
+          <Route path="/products/python-lab/playground" element={<PythonLabPlayground />} />
+          <Route path="/products/python-lab/challenges" element={<PythonLabChallenges />} />
+          <Route path="/products/python-lab/subscribe" element={<PythonLabSubscribe />} />
           <Route path="/products/lms" element={<LmsPage />} />
 
           {/* Services & Solutions Routes */}
