@@ -26,7 +26,7 @@ export default function PlaygroundPage() {
   const [xpEarned, setXpEarned] = useState(0);
   const [isPyodideLoading, setIsPyodideLoading] = useState(true);
 
-  const [progress] = useState(() => loadProgress());
+  const [progress, setProgress] = useState(() => loadProgress());
 
   useEffect(() => {
     if (challenge) {
@@ -57,6 +57,7 @@ export default function PlaygroundPage() {
       const alreadyDone = progress.completedChallenges.includes(challenge.id);
       if (!alreadyDone) {
         const updated = completeChallenge(challenge.id, challenge.xpReward);
+        setProgress(updated);
         setXpEarned(challenge.xpReward);
         setHasCompleted(true);
         fireConfetti({ count: 100, spread: 160 });

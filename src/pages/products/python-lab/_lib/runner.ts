@@ -1,6 +1,7 @@
+const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v314.0.0/full/";
+
 type PyodideModule = {
   runPython: (code: string) => unknown;
-  setStdout?: (cb: (text: string) => void) => void;
   loadPackage?: (names: string[]) => Promise<void>;
   globals: {
     get: (key: string) => unknown;
@@ -22,9 +23,12 @@ export async function loadPyodideInstance(): Promise<PyodideModule> {
 
   loadPromise = (async () => {
     try {
-      const { loadPyodide } = await import("pyodide");
+      const { loadPyodide } = await import(
+        /* @vite-ignore */ `${PYODIDE_CDN}pyodide.mjs`
+      );
       const pyodide = await loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/",
+        indexURL: PYODIDE_CDN,
+        stdin: () => prompt("Python needs input:") ?? "",
       });
       pyodideInstance = pyodide as unknown as PyodideModule;
       isLoaded = true;
@@ -44,22 +48,42 @@ export type RunResult = {
   error: string | null;
 };
 
-export async function runPythonCode(code: string): Promise<RunResult> {
-  const outputLines: string[] = [];
+let stdoutRedirectSetup = false;
 
+function initStdoutCapture(pyodide: PyodideModule) {
+  if (stdoutRedirectSetup) return;
+  pyodide.runPython(`
+import sys
+from io import StringIO
+_sys_stdout = sys.stdout
+sys.stdout = StringIO()
+`);
+  stdoutRedirectSetup = true;
+}
+
+function getCapturedOutput(pyodide: PyodideModule): string {
+  const output = pyodide.runPython("sys.stdout.getvalue()") as string;
+  pyodide.runPython("sys.stdout = StringIO()");
+  return output;
+}
+
+function restoreStdout(pyodide: PyodideModule) {
+  if (!stdoutRedirectSetup) return;
+  pyodide.runPython("sys.stdout = _sys_stdout");
+  stdoutRedirectSetup = false;
+}
+
+export async function runPythonCode(code: string): Promise<RunResult> {
   try {
     const pyodide = await loadPyodideInstance();
-    if (pyodide.setStdout) {
-      pyodide.setStdout((text: string) => {
-        outputLines.push(text);
-      });
-    }
-
+    initStdoutCapture(pyodide);
     pyodide.runPython(code);
-    return { success: true, output: outputLines.join("\n"), error: null };
+    const output = getCapturedOutput(pyodide);
+    return { success: true, output, error: null };
   } catch (err: unknown) {
+    if (pyodideInstance) restoreStdout(pyodideInstance);
     const message = err instanceof Error ? err.message : String(err);
-    return { success: false, output: outputLines.join("\n"), error: message };
+    return { success: false, output: "", error: message };
   }
 }
 
