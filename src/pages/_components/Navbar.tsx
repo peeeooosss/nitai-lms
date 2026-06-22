@@ -133,8 +133,11 @@ export default function Navbar() {
 
           {/* CTA */}
           <div className="hidden lg:flex items-center gap-3">
+            <Button size="sm" variant="ghost" className="font-semibold" asChild>
+              <Link to="/login">Sign In</Link>
+            </Button>
             <Button size="sm" className="font-semibold" asChild>
-              <Link to="/contact">Get Started</Link>
+              <Link to="/login">Get Started</Link>
             </Button>
           </div>
 
@@ -186,9 +189,12 @@ export default function Navbar() {
                   </Link>
                 )
               )}
-              <div className="pt-3">
+              <div className="pt-3 space-y-2">
+                <Button variant="outline" className="w-full font-semibold" asChild>
+                  <Link to="/login" onClick={() => setMobileOpen(false)}>Sign In</Link>
+                </Button>
                 <Button className="w-full font-semibold" asChild>
-                  <Link to="/contact" onClick={() => setMobileOpen(false)}>Get Started</Link>
+                  <Link to="/login" onClick={() => setMobileOpen(false)}>Get Started</Link>
                 </Button>
               </div>
             </div>

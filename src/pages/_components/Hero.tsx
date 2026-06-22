@@ -114,7 +114,7 @@ export default function Hero() {
           className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-14"
         >
           <Button size="lg" className="text-base font-semibold px-8 gap-2 cursor-pointer" asChild>
-            <Link to="/contact" onClick={() => fireConfetti({ count: 80 })}>Get Started <ArrowRight className="w-4 h-4" /></Link>
+            <Link to="/login" onClick={() => fireConfetti({ count: 80 })}>Get Started <ArrowRight className="w-4 h-4" /></Link>
           </Button>
           <a
             href="https://www.youtube.com/@nitaigroup"
