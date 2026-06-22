@@ -18,6 +18,9 @@ tsconfig.tsbuildinfo
 # API build output
 api/dist
 
+# Generated Prisma client
+api/generated
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

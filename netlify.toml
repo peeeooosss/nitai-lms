@@ -3,7 +3,7 @@
   publish = "dist"
 
 [functions]
-  external_node_modules = ["@prisma/client", "prisma"]
+  included_files = ["api/generated/client/**"]
 
 [[redirects]]
   from = "/api/*"
