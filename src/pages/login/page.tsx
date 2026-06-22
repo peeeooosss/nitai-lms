@@ -1,7 +1,7 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth.tsx";
-import { api, setToken } from "@/lib/api.ts";
+import { api } from "@/lib/api.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import Navbar from "../_components/Navbar.tsx";
@@ -21,9 +21,8 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  if (!isLoading && user?.onboarded) {
-    navigate("/dashboard", { replace: true });
-    return null;
+  if (user?.onboarded) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleAuth = async (e: React.FormEvent) => {
