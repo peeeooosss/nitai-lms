@@ -1,6 +1,6 @@
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
-import { useAuth } from "@/hooks/use-auth.ts";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api.ts";
+import { useAuth } from "@/lib/auth.tsx";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../_components/Navbar.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button.tsx";
 import {
   Rocket, Zap, Flame, Fuel, Star, Award, ArrowRight,
   Brain, Bot, Wifi, Glasses, Code2, FlaskConical, Palette,
-  Wrench, Microscope, Lightbulb, Wand2, Target, Car, Globe, Users, Cpu,
+  Wrench, Microscope, Lightbulb, Wand2, Target, Car, Globe, Users,
 } from "lucide-react";
 
 const FREE_TRIAL_LIMIT = 5;
@@ -64,13 +64,20 @@ function getNextRank(xp: number) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const profile = useQuery(api.users.getProfile);
-  const trialsLeft = FREE_TRIAL_LIMIT - (profile?.trialsUsed ?? 0);
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => api.get<any>("/api/users/profile"),
+    enabled: !!user,
+  });
+
   const xp = profile?.totalXp ?? 0;
+  const trialsUsed = profile?.trialsUsed ?? 0;
+  const trialsLeft = FREE_TRIAL_LIMIT - trialsUsed;
   const rank = getRank(xp);
   const nextRank = getNextRank(xp);
 
-  if (user === undefined || profile === undefined) {
+  if (isLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner className="size-8" />

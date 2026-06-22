@@ -3,14 +3,14 @@ import { Clock, BookOpen, GraduationCap, Signal, CheckCircle2 } from "lucide-rea
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Link } from "react-router-dom";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api.ts";
 import { toast } from "sonner";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import { useAuth } from "@/lib/auth.tsx";
 import { LAB_MODULES } from "./lms-constants.ts";
 
 type Props = {
-  course: Doc<"courses">;
+  course: any;
   enrolled?: boolean;
   progressPercent?: number;
 };
@@ -24,17 +24,26 @@ const DIFFICULTY_COLOR: Record<string, string> = {
 export default function CourseCard({ course, enrolled, progressPercent }: Props) {
   const lab = LAB_MODULES.find((l) => l.id === course.labModule);
   const Icon = lab?.icon ?? BookOpen;
-  const enroll = useMutation(api.lms.enrollments.enroll);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const handleEnroll = async (e: React.MouseEvent) => {
+  const enrollMutation = useMutation({
+    mutationFn: () => api.post(`/api/enrollments/enroll/${course.id}`),
+    onSuccess: () => {
+      toast.success("Enrolled! Start learning now.");
+      queryClient.invalidateQueries({ queryKey: ["myEnrollments"] });
+    },
+    onError: () => toast.error("Failed to enroll"),
+  });
+
+  const handleEnroll = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try {
-      await enroll({ courseId: course._id });
-      toast.success("Enrolled! Start learning now.");
-    } catch {
-      toast.error("Failed to enroll");
+    if (!user) {
+      toast.error("Sign in to enroll");
+      return;
     }
+    enrollMutation.mutate();
   };
 
   return (
@@ -42,7 +51,6 @@ export default function CourseCard({ course, enrolled, progressPercent }: Props)
       to={`/lms/courses/${course.slug}`}
       className="group flex flex-col bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-lg transition-all duration-200"
     >
-      {/* Cover or gradient header */}
       <div className="relative h-36 overflow-hidden flex-shrink-0">
         {course.coverImage ? (
           <img
@@ -88,7 +96,6 @@ export default function CourseCard({ course, enrolled, progressPercent }: Props)
           </div>
         </div>
 
-        {/* Progress bar for enrolled */}
         {enrolled && progressPercent !== undefined && (
           <div className="pt-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -104,12 +111,12 @@ export default function CourseCard({ course, enrolled, progressPercent }: Props)
           </div>
         )}
 
-        {/* Quick enroll button if not enrolled */}
         {!enrolled && (
           <Button
             size="sm"
             className="w-full mt-1 text-xs h-7"
             onClick={handleEnroll}
+            disabled={enrollMutation.isPending}
           >
             <GraduationCap className="w-3 h-3 mr-1" /> Enroll Free
           </Button>

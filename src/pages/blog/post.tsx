@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { api } from "@/convex/_generated/api.js";
+import { api } from "@/lib/api.ts";
 import Navbar from "@/pages/_components/Navbar.tsx";
 import Footer from "@/pages/_components/Footer.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -130,20 +130,32 @@ function renderMarkdown(content: string) {
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const seedPosts = useMutation(api.posts.seed);
-  const post = useQuery(api.posts.getBySlug, slug ? { slug } : "skip");
-  const allPosts = useQuery(api.posts.list, {});
+  const seedMutation = useMutation({
+    mutationFn: () => api.post("/api/posts/seed"),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+  });
+
+  const { data: post, isLoading } = useQuery({
+    queryKey: ["post", slug],
+    queryFn: () => api.get<any>(`/api/posts/${slug}`),
+    enabled: !!slug,
+  });
+
+  const { data: allPosts = [] } = useQuery({
+    queryKey: ["posts"],
+    queryFn: () => api.get<any[]>("/api/posts"),
+  });
 
   useEffect(() => {
-    seedPosts().catch(() => {/* silently ignore */});
+    seedMutation.mutate();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Related posts (same category, excluding current)
-  const related = allPosts?.filter((p) => p.slug !== slug && p.category === post?.category).slice(0, 3) ?? [];
+  const related = allPosts.filter((p: any) => p.slug !== slug && p.category === post?.category).slice(0, 3);
 
-  if (post === undefined) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -158,7 +170,7 @@ export default function BlogPostPage() {
     );
   }
 
-  if (post === null) {
+  if (!post) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -266,7 +278,7 @@ export default function BlogPostPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {related.map((p, i) => (
                 <motion.div
-                  key={p._id}
+                  key={p.id}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api.ts";
+import { useAuth } from "@/lib/auth.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty.tsx";
@@ -13,12 +13,31 @@ import LmsSidebar from "./_components/LmsSidebar.tsx";
 import { LAB_MODULES } from "./_components/lms-constants.ts";
 import CourseCard from "./_components/CourseCard.tsx";
 import Navbar from "../_components/Navbar.tsx";
-import { useAuth } from "@/hooks/use-auth.ts";
 import { toast } from "sonner";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import { cn } from "@/lib/utils.ts";
 
 type SortOption = "default" | "class-asc" | "class-desc" | "title";
+
+interface Course {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  labModule: string;
+  classLevel: number;
+  coverImage?: string;
+  duration?: string;
+  difficulty: string;
+  published: boolean;
+  order: number;
+}
+
+interface Enrollment {
+  id: string;
+  courseId: string;
+  course: Course;
+  enrolledAt: string;
+}
 
 function LabBanner({ labId }: { labId: string }) {
   const lab = LAB_MODULES.find((l) => l.id === labId);
@@ -38,33 +57,28 @@ function LabBanner({ labId }: { labId: string }) {
 }
 
 function AdminSeedBanner() {
-  const seedCourses = useMutation(api.lms.seed.seedCourses);
-  const [seeding, setSeeding] = useState(false);
-
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      const result = await seedCourses({});
-      toast.success(`Seeded ${result.created} sample courses!`);
-    } catch {
-      toast.error("Must be admin to seed courses");
-    } finally {
-      setSeeding(false);
-    }
-  };
+  const queryClient = useQueryClient();
+  const seedMutation = useMutation({
+    mutationFn: () => api.post<{ created: number }>("/api/courses/seed"),
+    onSuccess: (data) => {
+      toast.success(`Seeded ${data.created} sample courses!`);
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+    },
+    onError: () => toast.error("Must be admin to seed courses"),
+  });
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm">
       <Database className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
       <span className="flex-1 text-amber-800 dark:text-amber-300">No courses yet. Seed sample courses to get started.</span>
-      <Button size="sm" variant="secondary" onClick={handleSeed} disabled={seeding} className="shrink-0">
-        {seeding ? "Seeding..." : "Seed Courses"}
+      <Button size="sm" variant="secondary" onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending} className="shrink-0">
+        {seedMutation.isPending ? "Seeding..." : "Seed Courses"}
       </Button>
     </div>
   );
 }
 
-function sortCourses(courses: Doc<"courses">[], sort: SortOption): Doc<"courses">[] {
+function sortCourses(courses: Course[], sort: SortOption): Course[] {
   const copy = [...courses];
   if (sort === "class-asc") return copy.sort((a, b) => a.classLevel - b.classLevel || a.order - b.order);
   if (sort === "class-desc") return copy.sort((a, b) => b.classLevel - a.classLevel || a.order - b.order);
@@ -72,8 +86,8 @@ function sortCourses(courses: Doc<"courses">[], sort: SortOption): Doc<"courses"
   return copy.sort((a, b) => a.classLevel - b.classLevel || a.order - b.order);
 }
 
-function groupByClass(courses: Doc<"courses">[]): Map<number, Doc<"courses">[]> {
-  const map = new Map<number, Doc<"courses">[]>();
+function groupByClass(courses: Course[]): Map<number, Course[]> {
+  const map = new Map<number, Course[]>();
   for (const c of courses) {
     const existing = map.get(c.classLevel) ?? [];
     existing.push(c);
@@ -90,35 +104,42 @@ function DashboardInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
 
-  const allCourses = useQuery(api.lms.courses.list, {
-    labModule: selectedLab !== "all" ? selectedLab : undefined,
-    classLevel: selectedClass !== 0 ? selectedClass : undefined,
+  const { data: allCourses = [], isLoading } = useQuery({
+    queryKey: ["courses", selectedLab, selectedClass],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (selectedLab !== "all") params.set("labModule", selectedLab);
+      if (selectedClass !== 0) params.set("classLevel", String(selectedClass));
+      return api.get<Course[]>(`/api/courses?${params}`);
+    },
   });
 
-  const myEnrollments = useQuery(api.lms.enrollments.myEnrollments, {}) ?? [];
-  const enrolledCourseIds = new Set(myEnrollments.map((e) => e.courseId));
+  const { data: myEnrollments = [] } = useQuery({
+    queryKey: ["myEnrollments"],
+    queryFn: () => api.get<Enrollment[]>("/api/enrollments/my"),
+    enabled: !!user,
+  });
 
-  const filtered = (allCourses ?? []).filter((c: Doc<"courses">) =>
+  const enrolledCourseIds = new Set(myEnrollments.map((e: Enrollment) => e.courseId));
+
+  const filtered = allCourses.filter((c: Course) =>
     search.trim() === "" ||
     c.title.toLowerCase().includes(search.toLowerCase()) ||
     c.description.toLowerCase().includes(search.toLowerCase())
   );
 
   const sorted = sortCourses(filtered, sort);
-
-  // Group by class when no specific class is selected and more than 1 class present
   const classGroups = groupByClass(sorted);
   const groupedView = selectedClass === 0 && classGroups.size > 1 && search.trim() === "";
 
   const enrolledCourses = myEnrollments
-    .filter((e) => e.course !== null)
-    .map((e) => e.course as Doc<"courses">);
+    .filter((e: Enrollment) => e.course)
+    .map((e: Enrollment) => e.course);
 
-  const showSeedBanner = allCourses !== undefined && allCourses.length === 0;
+  const showSeedBanner = !isLoading && allCourses.length === 0;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
@@ -126,7 +147,6 @@ function DashboardInner() {
         />
       )}
 
-      {/* Sidebar */}
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-200",
@@ -143,9 +163,7 @@ function DashboardInner() {
         />
       </div>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
         <div className="flex items-center gap-3 p-4 border-b bg-background">
           <button
             className="md:hidden p-1.5 rounded-md hover:bg-muted cursor-pointer"
@@ -179,10 +197,8 @@ function DashboardInner() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8">
-          {/* Seed banner for empty catalog */}
           {showSeedBanner && <AdminSeedBanner />}
 
-          {/* My Enrolled Courses */}
           {enrolledCourses.length > 0 && !search && selectedLab === "all" && selectedClass === 0 && (
             <section>
               <h2 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
@@ -190,17 +206,15 @@ function DashboardInner() {
                 <span className="text-sm font-normal text-muted-foreground ml-1">({enrolledCourses.length})</span>
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {enrolledCourses.map((course) => (
-                  <CourseCard key={course._id} course={course} enrolled={true} />
+                {enrolledCourses.map((course: Course) => (
+                  <CourseCard key={course.id} course={course} enrolled={true} />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Lab Banner */}
           <LabBanner labId={selectedLab} />
 
-          {/* Course Catalog */}
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-bold text-lg">
@@ -210,7 +224,7 @@ function DashboardInner() {
               <span className="text-sm text-muted-foreground">{filtered.length} course{filtered.length !== 1 ? "s" : ""}</span>
             </div>
 
-            {allCourses === undefined ? (
+            {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <Skeleton key={i} className="h-72 w-full rounded-xl" />
@@ -227,7 +241,6 @@ function DashboardInner() {
                 </EmptyHeader>
               </Empty>
             ) : groupedView ? (
-              // Grouped by class level
               <div className="space-y-8">
                 {Array.from(classGroups.entries())
                   .sort(([a], [b]) => a - b)
@@ -241,11 +254,11 @@ function DashboardInner() {
                         <span className="text-xs text-muted-foreground font-normal">({courses.length} courses)</span>
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {courses.map((course) => (
+                        {courses.map((course: Course) => (
                           <CourseCard
-                            key={course._id}
+                            key={course.id}
                             course={course}
-                            enrolled={enrolledCourseIds.has(course._id)}
+                            enrolled={enrolledCourseIds.has(course.id)}
                           />
                         ))}
                       </div>
@@ -253,13 +266,12 @@ function DashboardInner() {
                   ))}
               </div>
             ) : (
-              // Flat grid
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {sorted.map((course: Doc<"courses">) => (
+                {sorted.map((course: Course) => (
                   <CourseCard
-                    key={course._id}
+                    key={course.id}
                     course={course}
-                    enrolled={enrolledCourseIds.has(course._id)}
+                    enrolled={enrolledCourseIds.has(course.id)}
                   />
                 ))}
               </div>
@@ -272,17 +284,18 @@ function DashboardInner() {
 }
 
 export default function LmsDashboard() {
+  const { user, isLoading } = useAuth();
+
   return (
     <>
       <div className="hidden md:block">
         <Navbar />
       </div>
-      <AuthLoading>
+      {isLoading ? (
         <div className="flex items-center justify-center min-h-screen">
           <Skeleton className="h-16 w-64" />
         </div>
-      </AuthLoading>
-      <Unauthenticated>
+      ) : !user ? (
         <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
             <BookOpen className="w-8 h-8 text-primary" />
@@ -293,10 +306,9 @@ export default function LmsDashboard() {
           </p>
           <SignInButton />
         </div>
-      </Unauthenticated>
-      <Authenticated>
+      ) : (
         <DashboardInner />
-      </Authenticated>
+      )}
     </>
   );
 }

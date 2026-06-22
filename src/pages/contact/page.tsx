@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
-import { ConvexError } from "convex/values";
+import { api } from "@/lib/api.ts";
 import { toast } from "sonner";
 import Navbar from "@/pages/_components/Navbar.tsx";
 import Footer from "@/pages/_components/Footer.tsx";
@@ -83,7 +81,7 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const submitInquiry = useMutation(api.inquiries.submit);
+  const submitInquiry = (data: any) => api.post("/api/inquiries", data);
 
   const handleChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -109,13 +107,8 @@ export default function ContactPage() {
       setSubmitted(true);
       setForm(INITIAL);
       toast.success("Inquiry submitted! We'll get back to you within 24 hours.");
-    } catch (err) {
-      if (err instanceof ConvexError) {
-        const { message } = err.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error("Failed to submit. Please try again.");
-      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit. Please try again.");
     } finally {
       setSubmitting(false);
     }

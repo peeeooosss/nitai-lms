@@ -1,19 +1,16 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api.ts";
+import { useAuth } from "@/lib/auth.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { SignInButton } from "@/components/ui/signin.tsx";
 import { ChevronLeft, ChevronRight, CheckCircle2, BookOpen, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { toast } from "sonner";
-import type { Id } from "@/convex/_generated/dataModel.d.ts";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 import Navbar from "../_components/Navbar.tsx";
 
 function LessonContent({ content }: { content: string }) {
-  // Simple markdown-like rendering
   const lines = content.split("\n");
   return (
     <div className="prose prose-sm max-w-none dark:prose-invert space-y-2">
@@ -32,23 +29,44 @@ function LessonContent({ content }: { content: string }) {
 
 function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string }) {
   const navigate = useNavigate();
-  const course = useQuery(api.lms.courses.getBySlug, { slug });
-  const lesson = useQuery(api.lms.lessons.getById, { id: lessonId as Id<"lessons"> });
-  const lessons = useQuery(
-    api.lms.lessons.listByCourse,
-    course ? { courseId: course._id } : "skip"
-  ) ?? [];
+  const queryClient = useQueryClient();
 
-  const progress = useQuery(
-    api.lms.enrollments.myProgress,
-    course ? { courseId: course._id } : "skip"
-  ) ?? [];
+  const { data: course } = useQuery({
+    queryKey: ["course", slug],
+    queryFn: () => api.get<any>(`/api/courses/${slug}`),
+  });
 
-  const markComplete = useMutation(api.lms.enrollments.markLessonComplete);
-  const completedIds = new Set(progress.map((p) => p.lessonId));
-  const isCompleted = completedIds.has(lessonId as Id<"lessons">);
+  const { data: lesson } = useQuery({
+    queryKey: ["lesson", lessonId],
+    queryFn: () => api.get<any>(`/api/lessons/${lessonId}`),
+    enabled: !!lessonId,
+  });
 
-  const currentIndex = lessons.findIndex((l: Doc<"lessons">) => l._id === lessonId);
+  const { data: lessons = [] } = useQuery({
+    queryKey: ["lessons", course?.id],
+    queryFn: () => api.get<any[]>(`/api/lessons/course/${course!.id}`),
+    enabled: !!course,
+  });
+
+  const { data: progress } = useQuery({
+    queryKey: ["progress", course?.id],
+    queryFn: () => api.get<any>(`/api/enrollments/progress/${course!.id}`),
+    enabled: !!course,
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => api.post("/api/enrollments/complete-lesson", { lessonId, courseId: course!.id }),
+    onSuccess: () => {
+      toast.success("Lesson marked as complete!");
+      queryClient.invalidateQueries({ queryKey: ["progress"] });
+      if (nextLesson) navigate(`/lms/courses/${slug}/lessons/${nextLesson.id}`);
+    },
+    onError: () => toast.error("Failed to mark complete"),
+  });
+
+  const completedIds = new Set(progress?.lessons?.filter((l: any) => l.completed).map((l: any) => l.id) ?? []);
+  const isCompleted = lesson ? completedIds.has(lesson.id) : false;
+  const currentIndex = lessons.findIndex((l: any) => l.id === lessonId);
   const prevLesson = currentIndex > 0 ? lessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < lessons.length - 1 ? lessons[currentIndex + 1] : null;
 
@@ -61,7 +79,7 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
     );
   }
 
-  if (lesson === null || course === null) {
+  if (!lesson || !course) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <BookOpen className="w-12 h-12 text-muted-foreground" />
@@ -71,19 +89,8 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
     );
   }
 
-  const handleMarkComplete = async () => {
-    try {
-      await markComplete({ lessonId: lesson._id, courseId: course._id });
-      toast.success("Lesson marked as complete!");
-      if (nextLesson) navigate(`/lms/courses/${slug}/lessons/${nextLesson._id}`);
-    } catch {
-      toast.error("Failed to mark complete");
-    }
-  };
-
   return (
     <div className="flex flex-col md:flex-row max-w-6xl mx-auto min-h-[calc(100vh-64px)]">
-      {/* Lesson list sidebar */}
       <aside className="hidden md:flex flex-col w-72 border-r border-border overflow-y-auto">
         <div className="p-4 border-b">
           <Link to={`/lms/courses/${slug}`} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
@@ -91,21 +98,18 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
             <span className="font-medium truncate">{course.title}</span>
           </Link>
           <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${lessons.length > 0 ? (completedIds.size / lessons.length) * 100 : 0}%` }}
-            />
+            <div className="h-full bg-primary rounded-full" style={{ width: `${lessons.length > 0 ? (completedIds.size / lessons.length) * 100 : 0}%` }} />
           </div>
           <p className="text-xs text-muted-foreground mt-1">{completedIds.size}/{lessons.length} lessons</p>
         </div>
         <div className="flex-1 p-2 space-y-0.5">
-          {lessons.map((l: Doc<"lessons">, idx: number) => {
-            const done = completedIds.has(l._id);
-            const active = l._id === lessonId;
+          {lessons.map((l: any, idx: number) => {
+            const done = completedIds.has(l.id);
+            const active = l.id === lessonId;
             return (
               <button
-                key={l._id}
-                onClick={() => navigate(`/lms/courses/${slug}/lessons/${l._id}`)}
+                key={l.id}
+                onClick={() => navigate(`/lms/courses/${slug}/lessons/${l.id}`)}
                 className={cn(
                   "w-full flex items-center gap-2 p-2.5 rounded-lg text-left text-sm transition-colors cursor-pointer",
                   active ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted",
@@ -113,7 +117,11 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
                 )}
               >
                 <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
-                  {done ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[10px] font-bold text-muted-foreground">{idx + 1}</span>}
+                  {done ? (
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                  ) : (
+                    <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[10px] font-bold text-muted-foreground">{idx + 1}</span>
+                  )}
                 </div>
                 <span className="truncate">{l.title}</span>
               </button>
@@ -122,10 +130,8 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
-          {/* Lesson header */}
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Lesson {currentIndex + 1} of {lessons.length}</span>
@@ -136,15 +142,9 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
             <h1 className="font-display font-bold text-2xl">{lesson.title}</h1>
           </div>
 
-          {/* Video */}
           {lesson.videoUrl && (
             <div className="rounded-xl overflow-hidden bg-black aspect-video">
-              <iframe
-                src={lesson.videoUrl}
-                className="w-full h-full"
-                allowFullScreen
-                title={lesson.title}
-              />
+              <iframe src={lesson.videoUrl} className="w-full h-full" allowFullScreen title={lesson.title} />
             </div>
           )}
 
@@ -155,16 +155,14 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
             </div>
           )}
 
-          {/* Content */}
           <div className="bg-card border border-border rounded-xl p-5 md:p-8">
             <LessonContent content={lesson.content} />
           </div>
 
-          {/* Navigation */}
           <div className="flex items-center justify-between pt-2">
             <Button
               variant="secondary"
-              onClick={() => prevLesson && navigate(`/lms/courses/${slug}/lessons/${prevLesson._id}`)}
+              onClick={() => prevLesson && navigate(`/lms/courses/${slug}/lessons/${prevLesson.id}`)}
               disabled={!prevLesson}
               className="flex items-center gap-1.5"
             >
@@ -172,14 +170,13 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
             </Button>
 
             {!isCompleted ? (
-              <Button onClick={handleMarkComplete} className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Mark Complete
-                {nextLesson && " & Next"}
+              <Button onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending} className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" /> Mark Complete{nextLesson ? " & Next" : ""}
               </Button>
             ) : (
               <Button
                 variant="secondary"
-                onClick={() => nextLesson && navigate(`/lms/courses/${slug}/lessons/${nextLesson._id}`)}
+                onClick={() => nextLesson && navigate(`/lms/courses/${slug}/lessons/${nextLesson.id}`)}
                 disabled={!nextLesson}
                 className="flex items-center gap-1.5"
               >
@@ -195,24 +192,24 @@ function LessonViewerInner({ slug, lessonId }: { slug: string; lessonId: string 
 
 export default function LessonViewerPage() {
   const { slug, lessonId } = useParams<{ slug: string; lessonId: string }>();
+  const { user, isLoading } = useAuth();
+
   return (
     <>
       <Navbar />
-      <AuthLoading>
+      {isLoading ? (
         <div className="max-w-4xl mx-auto p-6 space-y-4">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-96 w-full" />
         </div>
-      </AuthLoading>
-      <Unauthenticated>
+      ) : !user ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
           <h2 className="text-xl font-semibold">Sign in to view lessons</h2>
           <SignInButton />
         </div>
-      </Unauthenticated>
-      <Authenticated>
+      ) : (
         <LessonViewerInner slug={slug ?? ""} lessonId={lessonId ?? ""} />
-      </Authenticated>
+      )}
     </>
   );
 }

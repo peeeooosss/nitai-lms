@@ -1,38 +1,74 @@
 import { useNavigate } from "react-router-dom";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api.js";
-import { SignInButton } from "@/components/ui/signin.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
+import { useState } from "react";
+import { useAuth } from "@/lib/auth.tsx";
+import { api, setToken } from "@/lib/api.ts";
 import { Button } from "@/components/ui/button.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
 import Navbar from "../_components/Navbar.tsx";
-import { Rocket, Sparkles, GraduationCap, Atom } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Rocket, Sparkles, GraduationCap, LogIn, UserPlus } from "lucide-react";
 
 const AVATARS = ["🧑‍🚀", "👩‍🔬", "🧑‍💻", "👨‍🏫", "🧑‍🎨", "👩‍🚀", "🧑‍✈️", "👨‍🔬"];
 
 export default function LoginPage() {
-  const { isAuthenticated } = useConvexAuth();
+  const { user, isLoading, signin, signup, refetchUser } = useAuth();
   const navigate = useNavigate();
-  const user = useQuery(api.users.getCurrentUser);
-  const onboardUser = useMutation(api.users.onboardUser);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [onboarding, setOnboarding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (isAuthenticated && user?.onboarded) {
-      navigate("/dashboard", { replace: true });
+  if (!isLoading && user?.onboarded) {
+    navigate("/dashboard", { replace: true });
+    return null;
+  }
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      if (mode === "signup") {
+        await signup(email, password, name || undefined);
+      } else {
+        await signin(email, password);
+      }
+    } catch (err: any) {
+      setError(err.message || "Authentication failed");
+    } finally {
+      setSubmitting(false);
     }
-  }, [isAuthenticated, user?.onboarded, navigate]);
+  };
 
   const handleOnboard = async () => {
     if (!selectedAvatar || !displayName.trim()) return;
-    setOnboarding(true);
-    await onboardUser({ avatar: selectedAvatar, name: displayName.trim() });
-    navigate("/dashboard", { replace: true });
+    setSubmitting(true);
+    try {
+      await api.patch("/api/users/onboard", { avatar: selectedAvatar, name: displayName.trim() });
+      await refetchUser();
+      navigate("/dashboard", { replace: true });
+    } catch {
+      setError("Failed to save profile");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (!isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <Spinner className="size-8" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -49,30 +85,62 @@ export default function LoginPage() {
           <p className="text-muted-foreground text-lg max-w-md mb-8">
             Sign in to begin your learning mission. Explore AI, Robotics, Coding, and more across 19+ labs.
           </p>
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
-            {["🧑‍🚀", "👩‍🔬", "🤖", "🚀", "💻", "🔬"].map((emoji, i) => (
-              <span key={i} className="text-2xl animate-bounce" style={{ animationDelay: `${i * 0.15}s` }}>{emoji}</span>
-            ))}
+
+          <div className="w-full max-w-sm">
+            <form onSubmit={handleAuth} className="space-y-4 text-left">
+              <div>
+                <label className="text-sm font-medium block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  required
+                />
+              </div>
+              {mode === "signup" && (
+                <div>
+                  <label className="text-sm font-medium block mb-1">Name (optional)</label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" disabled={submitting} className="w-full h-12 text-base rounded-xl">
+                {submitting ? <Spinner className="mr-2" /> : mode === "login" ? <LogIn className="w-4 h-4 mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                {mode === "login" ? "Sign In" : "Create Account"}
+              </Button>
+            </form>
+            <p className="text-sm text-muted-foreground mt-4">
+              {mode === "login" ? (
+                <>Don't have an account? <button onClick={() => { setMode("signup"); setError(""); }} className="text-primary underline cursor-pointer">Sign up</button></>
+              ) : (
+                <>Already have an account? <button onClick={() => { setMode("login"); setError(""); }} className="text-primary underline cursor-pointer">Sign in</button></>
+              )}
+            </p>
           </div>
-          <SignInButton
-            signInText="Begin Your Mission"
-            className="text-lg px-8 py-6 h-auto rounded-xl shadow-lg shadow-primary/20"
-          />
-          <p className="text-xs text-muted-foreground mt-4">Free trial — no credit card required</p>
         </div>
       </div>
     );
   }
 
-  if (user === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Spinner className="size-8" />
-      </div>
-    );
-  }
-
-  if (!user?.onboarded) {
+  if (!user.onboarded) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -83,7 +151,7 @@ export default function LoginPage() {
               <h2 className="font-display font-bold text-2xl">Welcome, Cadet!</h2>
               <p className="text-muted-foreground mt-1">Choose your avatar and call sign to enter Mission Control.</p>
             </div>
-
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <div>
               <label className="text-sm font-medium mb-2 block">Pick your avatar</label>
               <div className="grid grid-cols-4 gap-3">
@@ -102,25 +170,23 @@ export default function LoginPage() {
                 ))}
               </div>
             </div>
-
             <div>
               <label className="text-sm font-medium mb-2 block">Your call sign</label>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="e.g. AstroLearner"
-                className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
                 maxLength={30}
               />
             </div>
-
             <Button
               className="w-full h-12 text-base rounded-xl"
-              disabled={!selectedAvatar || !displayName.trim() || onboarding}
+              disabled={!selectedAvatar || !displayName.trim() || submitting}
               onClick={handleOnboard}
             >
-              {onboarding ? <Spinner className="mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}
-              {onboarding ? "Entering Mission Control..." : "Enter Mission Control"}
+              {submitting ? <Spinner className="mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}
+              {submitting ? "Entering Mission Control..." : "Enter Mission Control"}
             </Button>
           </div>
         </div>

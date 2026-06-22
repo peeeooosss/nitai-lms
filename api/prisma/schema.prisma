@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String?
+  passwordHash      String?
+  avatar            String?
+  isAdmin           Boolean  @default(false)
+  onboarded         Boolean  @default(false)
+  totalXp           Int      @default(0)
+  trialsUsed        Int      @default(0)
+  subscriptionStatus String  @default("free")
+  subscriptionEndsAt String?
+  lastLoginAt       String?
+  createdAt         DateTime @default(now())
+
+  studentProgress   StudentProgress[]
+  trialUsage        TrialUsage[]
+  enrollments       Enrollment[]
+  lessonProgress    LessonProgress[]
+
+  @@index([email])
+}
+
+model StudentProgress {
+  id                  String   @id @default(cuid())
+  userId              String
+  labId               String
+  completedChallenges Json     @default("[]")
+  xpEarned            Int      @default(0)
+  streakCount         Int      @default(0)
+  lastCompletedDate   String?
+  startedAt           String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, labId])
+  @@index([userId])
+}
+
+model TrialUsage {
+  id     String @id @default(cuid())
+  userId String
+  labId  String
+  usedAt String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, labId])
+  @@index([userId])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String
+  category    String
+  coverImage  String?
+  author      String
+  authorRole  String?
+  published   Boolean  @default(false)
+  publishedAt String?
+  tags        Json     @default("[]")
+  readingTime Int?
+  createdAt   DateTime @default(now())
+
+  @@index([slug])
+  @@index([category])
+  @@index([published])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  labModule   String
+  classLevel  Int
+  coverImage  String?
+  duration    String?
+  difficulty  String
+  published   Boolean  @default(false)
+  order       Int      @default(0)
+
+  lessons     Lesson[]
+  enrollments Enrollment[]
+
+  @@index([slug])
+  @@index([labModule])
+  @@index([classLevel])
+  @@index([labModule, classLevel])
+  @@index([published])
+}
+
+model Lesson {
+  id        String  @id @default(cuid())
+  courseId   String
+  title     String
+  content   String
+  videoUrl  String?
+  order     Int     @default(0)
+  duration  Int?
+  type      String
+
+  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonProgress  LessonProgress[]
+
+  @@index([courseId])
+  @@index([courseId, order])
+}
+
+model Enrollment {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId     String
+  enrolledAt  String
+  completedAt String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id          String @id @default(cuid())
+  userId      String
+  lessonId    String
+  courseId     String
+  completedAt String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([userId, courseId])
+}
+
+model Inquiry {
+  id               String @id @default(cuid())
+  name             String
+  email            String
+  phone            String?
+  organization     String
+  organizationType String
+  subject          String
+  message          String
+  status           String @default("new")
+  createdAt        DateTime @default(now())
+
+  @@index([status])
+}
