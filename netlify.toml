@@ -1,6 +1,14 @@
 [build]
-  command = "pnpm run build"
+  command = "cd api && npx prisma generate && cd .. && pnpm run build"
   publish = "dist"
+
+[functions]
+  external_node_modules = ["@prisma/client", "prisma"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
 
 [[redirects]]
   from = "/*"
@@ -9,3 +17,4 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  PNPM_VERSION = "11"
