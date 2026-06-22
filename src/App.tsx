@@ -37,6 +37,9 @@ import AdminInquiriesPage from "./pages/admin/inquiries.tsx";
 import LmsDashboard from "./pages/lms/page.tsx";
 import CourseDetailPage from "./pages/lms/course.tsx";
 import LessonViewerPage from "./pages/lms/lesson.tsx";
+import LoginPage from "./pages/login/page.tsx";
+import DashboardPage from "./pages/dashboard/page.tsx";
+import { AuthGuard } from "./components/AuthGuard.tsx";
 
 // New Labs
 import SpaceLabPage from "./pages/labs/SpaceLab.tsx";
@@ -57,16 +60,18 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
 
           {/* Lab Routes */}
-          <Route path="/labs/ai" element={<AiLabPage />} />
-          <Route path="/labs/robotics" element={<RoboticsLabPage />} />
-          <Route path="/labs/iot" element={<IoTLabPage />} />
-          <Route path="/labs/arvr" element={<ArVrLabPage />} />
-          <Route path="/labs/coding" element={<CodingLabPage />} />
-          <Route path="/labs/stem" element={<StemLabPage />} />
-          <Route path="/labs/creator" element={<CreatorLabPage />} />
-          <Route path="/labs/skill" element={<SkillLabPage />} />
+          <Route path="/labs/ai" element={<AuthGuard><AiLabPage /></AuthGuard>} />
+          <Route path="/labs/robotics" element={<AuthGuard><RoboticsLabPage /></AuthGuard>} />
+          <Route path="/labs/iot" element={<AuthGuard><IoTLabPage /></AuthGuard>} />
+          <Route path="/labs/arvr" element={<AuthGuard><ArVrLabPage /></AuthGuard>} />
+          <Route path="/labs/coding" element={<AuthGuard><CodingLabPage /></AuthGuard>} />
+          <Route path="/labs/stem" element={<AuthGuard><StemLabPage /></AuthGuard>} />
+          <Route path="/labs/creator" element={<AuthGuard><CreatorLabPage /></AuthGuard>} />
+          <Route path="/labs/skill" element={<AuthGuard><SkillLabPage /></AuthGuard>} />
 
           {/* Product Routes */}
           <Route path="/products/picto-lab" element={<PictoLabPage />} />
@@ -86,15 +91,15 @@ export default function App() {
           <Route path="/about" element={<AboutPage />} />
 
           {/* New Lab Routes */}
-          <Route path="/labs/space" element={<SpaceLabPage />} />
-          <Route path="/labs/rnd" element={<RndLabPage />} />
-          <Route path="/labs/incubation" element={<IncubationLabPage />} />
-          <Route path="/labs/ai-tools" element={<AiToolsLabPage />} />
-          <Route path="/labs/agentic-ai" element={<AgenticAiLabPage />} />
-          <Route path="/labs/automated" element={<AutomatedLabPage />} />
-          <Route path="/labs/autonomous" element={<AutonomousLabPage />} />
-          <Route path="/labs/ir50" element={<Ir50LabPage />} />
-          <Route path="/labs/future-workforce" element={<FutureWorkforceLabPage />} />
+          <Route path="/labs/space" element={<AuthGuard><SpaceLabPage /></AuthGuard>} />
+          <Route path="/labs/rnd" element={<AuthGuard><RndLabPage /></AuthGuard>} />
+          <Route path="/labs/incubation" element={<AuthGuard><IncubationLabPage /></AuthGuard>} />
+          <Route path="/labs/ai-tools" element={<AuthGuard><AiToolsLabPage /></AuthGuard>} />
+          <Route path="/labs/agentic-ai" element={<AuthGuard><AgenticAiLabPage /></AuthGuard>} />
+          <Route path="/labs/automated" element={<AuthGuard><AutomatedLabPage /></AuthGuard>} />
+          <Route path="/labs/autonomous" element={<AuthGuard><AutonomousLabPage /></AuthGuard>} />
+          <Route path="/labs/ir50" element={<AuthGuard><Ir50LabPage /></AuthGuard>} />
+          <Route path="/labs/future-workforce" element={<AuthGuard><FutureWorkforceLabPage /></AuthGuard>} />
 
           {/* Coming Soon stubs */}
           <Route path="/blog" element={<BlogPage />} />

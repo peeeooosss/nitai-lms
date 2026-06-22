@@ -1,13 +1,62 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const LabIds = v.union(
+  v.literal("ai-lab"),
+  v.literal("robotics-lab"),
+  v.literal("iot-lab"),
+  v.literal("arvr-lab"),
+  v.literal("coding-lab"),
+  v.literal("stem-lab"),
+  v.literal("creator-lab"),
+  v.literal("skill-lab"),
+  v.literal("space-lab"),
+  v.literal("rnd-lab"),
+  v.literal("incubation-lab"),
+  v.literal("ai-tools-lab"),
+  v.literal("agentic-ai-lab"),
+  v.literal("automated-lab"),
+  v.literal("autonomous-lab"),
+  v.literal("ir50-lab"),
+  v.literal("future-workforce-lab"),
+  v.literal("picto-lab"),
+  v.literal("python-lab"),
+);
+
 export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     isAdmin: v.optional(v.boolean()),
+    onboarded: v.optional(v.boolean()),
+    avatar: v.optional(v.string()),
+    totalXp: v.optional(v.number()),
+    trialsUsed: v.optional(v.number()),
+    subscriptionStatus: v.optional(v.string()),
+    subscriptionEndsAt: v.optional(v.string()),
+    lastLoginAt: v.optional(v.string()),
   }).index("by_token", ["tokenIdentifier"]),
+
+  studentProgress: defineTable({
+    userId: v.id("users"),
+    labId: LabIds,
+    completedChallenges: v.array(v.string()),
+    xpEarned: v.number(),
+    streakCount: v.number(),
+    lastCompletedDate: v.optional(v.string()),
+    startedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_lab", ["userId", "labId"]),
+
+  trialUsage: defineTable({
+    userId: v.id("users"),
+    labId: LabIds,
+    usedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_lab", ["userId", "labId"]),
 
   posts: defineTable({
     title: v.string(),

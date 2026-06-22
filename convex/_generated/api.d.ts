@@ -14,6 +14,8 @@ import type * as lms_enrollments from "../lms/enrollments.js";
 import type * as lms_lessons from "../lms/lessons.js";
 import type * as lms_seed from "../lms/seed.js";
 import type * as posts from "../posts.js";
+import type * as studentProgress from "../studentProgress.js";
+import type * as trials from "../trials.js";
 import type * as users from "../users.js";
 
 import type {
@@ -29,6 +31,8 @@ declare const fullApi: ApiFromModules<{
   "lms/lessons": typeof lms_lessons;
   "lms/seed": typeof lms_seed;
   posts: typeof posts;
+  studentProgress: typeof studentProgress;
+  trials: typeof trials;
   users: typeof users;
 }>;
 
