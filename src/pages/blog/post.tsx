@@ -240,7 +240,7 @@ export default function BlogPostPage() {
             {/* Author */}
             <div className="flex items-center gap-3 pb-8 mb-8 border-b border-border">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                {post.author.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                {post.author.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
               </div>
               <div>
                 <div className="font-semibold text-foreground text-sm">{post.author}</div>
@@ -258,7 +258,7 @@ export default function BlogPostPage() {
               <div className="mt-10 pt-8 border-t border-border">
                 <div className="flex flex-wrap items-center gap-2">
                   <Tag className="w-4 h-4 text-muted-foreground" />
-                  {post.tags.map((tag) => (
+                  {post.tags.map((tag: string) => (
                     <span key={tag} className="text-xs px-3 py-1 bg-muted rounded-full text-muted-foreground">
                       {tag}
                     </span>

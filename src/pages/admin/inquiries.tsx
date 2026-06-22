@@ -165,7 +165,7 @@ function AdminDashboardInner() {
         <div className="flex flex-wrap gap-3 mb-6">
           {Object.entries(statsData.byType).map(([type, count]) => (
             <div key={type} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/40 rounded-full border border-border text-xs font-medium text-muted-foreground capitalize">
-              {ORG_ICONS[type] ?? <Building2 className="w-4 h-4" />}
+              {ORG_ICONS[type as keyof typeof ORG_ICONS] ?? <Building2 className="w-4 h-4" />}
               {type}: {count}
             </div>
           ))}
