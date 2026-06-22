@@ -1,6 +1,4 @@
-import convexPlugin from "@convex-dev/eslint-plugin";
 import js from "@eslint/js";
-import herculesPlugin from "@usehercules/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import { globalIgnores } from "eslint/config";
@@ -9,7 +7,7 @@ import tseslint from "typescript-eslint";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["dist", "**/_generated/*"]),
+  globalIgnores(["dist"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
@@ -17,14 +15,8 @@ export default defineConfig([
       tseslint.configs.recommended,
       reactHooks.configs["recommended-latest"],
       reactRefresh.configs.vite,
-      convexPlugin.configs.recommended,
-      herculesPlugin.configs.recommended,
     ],
     rules: {
-      "@typescript-eslint/ban-ts-comment": [
-        "error",
-        { "ts-ignore": true, "ts-expect-error": true, "ts-nocheck": true },
-      ],
       "@typescript-eslint/no-unused-vars": "off",
       "prefer-const": "off",
       "react-refresh/only-export-components": [
