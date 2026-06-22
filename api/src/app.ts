@@ -9,6 +9,7 @@ import enrollmentRoutes from "./routes/enrollments.js";
 import postRoutes from "./routes/posts.js";
 import inquiryRoutes from "./routes/inquiries.js";
 import studentRoutes from "./routes/students.js";
+import { prisma } from "./db.js";
 
 const app = express();
 
@@ -26,6 +27,15 @@ app.use("/api/students", studentRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.get("/api/health/db", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", database: "connected" });
+  } catch (e) {
+    res.status(503).json({ status: "error", database: "disconnected", error: (e as Error).message });
+  }
 });
 
 export default app;
