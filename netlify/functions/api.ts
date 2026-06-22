@@ -10,5 +10,12 @@ export const handler = serverless(app, {
     if (prefix) {
       req.url = "/api" + (event.path.slice(prefix.length) || "");
     }
+    // Parse JSON body and mark as done so body-parser skips
+    if (event.body && typeof event.body === "string" && event.headers?.["content-type"]?.includes("json")) {
+      try {
+        req.body = JSON.parse(event.body);
+        req._body = true;
+      } catch {}
+    }
   },
 });
