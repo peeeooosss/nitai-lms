@@ -1,6 +1,15 @@
 [build]
-  command = "pnpm run build"
+  command = "cd api && npx prisma generate && cp -r node_modules/.prisma ../node_modules/ && cd .. && pnpm run build"
   publish = "dist"
+
+[functions]
+  external_node_modules = ["@prisma/client", "prisma"]
+  included_files = ["api/node_modules/.prisma/**"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
 
 [[redirects]]
   from = "/*"
