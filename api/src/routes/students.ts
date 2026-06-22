@@ -7,8 +7,9 @@ const router = Router();
 const FREE_TRIAL_LIMIT = 5;
 
 router.get("/progress/:labId", requireAuth, async (req: Request, res: Response) => {
+  const labId = req.params.labId as string;
   const progress = await prisma.studentProgress.findUnique({
-    where: { userId_labId: { userId: req.user!.userId, labId: req.params.labId } },
+    where: { userId_labId: { userId: req.user!.userId, labId } },
   });
   res.json(progress);
 });
@@ -79,8 +80,9 @@ router.get("/trials/:labId", requireAuth, async (req: Request, res: Response) =>
     res.status(404).json({ code: "NOT_FOUND", message: "User not found" });
     return;
   }
+  const trialLabId = req.params.labId as string;
   const trial = await prisma.trialUsage.findUnique({
-    where: { userId_labId: { userId: req.user!.userId, labId: req.params.labId } },
+    where: { userId_labId: { userId: req.user!.userId, labId: trialLabId } },
   });
   const canAccess = (user.trialsUsed ?? 0) < FREE_TRIAL_LIMIT || !!trial;
   res.json({ canAccess, trialsUsed: user.trialsUsed, trialsRemaining: Math.max(0, FREE_TRIAL_LIMIT - (user.trialsUsed ?? 0)) });

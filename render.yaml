@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nitai-api
+    runtime: node
+    repo: https://github.com/peeeooosss/nitai-lms
+    rootDir: api
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://nitai-lms.netlify.app

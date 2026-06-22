@@ -1,8 +1,5 @@
 packages:
   - '.'
 allowBuilds:
-  '@prisma/engines': true
-  prisma: true
-  esbuild: true
   '@swc/core': true
-  '@prisma/client': false
+  esbuild: true
