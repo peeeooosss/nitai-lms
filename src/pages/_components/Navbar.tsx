@@ -38,7 +38,7 @@ const navLinks = [
   { label: "Solutions", href: "/solutions" },
   { label: "Teachers Training", href: "/teachers-training" },
   { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
+  { label: "Contact", href: "/contact#contact-form" },
 ];
 
 export default function Navbar() {

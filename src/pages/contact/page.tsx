@@ -185,7 +185,7 @@ export default function ContactPage() {
                 transition={{ duration: 0.6 }}
                 className="bg-card border border-border rounded-2xl p-8"
               >
-                <div id="contact-form" />
+                <div id="contact-form" className="scroll-mt-24" />
                 {submitted ? (
                   <div className="text-center py-12">
                     <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
