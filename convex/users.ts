@@ -37,6 +37,7 @@ export const updateCurrentUser = mutation({
 export const onboardUser = mutation({
   args: {
     avatar: v.string(),
+    name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -58,6 +59,7 @@ export const onboardUser = mutation({
     await ctx.db.patch(user._id, {
       onboarded: true,
       avatar: args.avatar,
+      name: args.name,
       lastLoginAt: new Date().toISOString(),
     });
     return user._id;
