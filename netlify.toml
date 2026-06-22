@@ -1,9 +1,9 @@
 [build]
-  command = "cd api && npx prisma generate && cd .. && pnpm run build"
+  command = "cd api && npx prisma generate && cd .. && mkdir -p generated && cp -r api/generated/client generated/ && pnpm run build"
   publish = "dist"
 
 [functions]
-  included_files = ["api/generated/client/**"]
+  included_files = ["generated/client/**"]
 
 [[redirects]]
   from = "/api/*"

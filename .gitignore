@@ -20,6 +20,7 @@ api/dist
 
 # Generated Prisma client
 api/generated
+/generated
 
 # Editor directories and files
 .vscode/*
