@@ -107,7 +107,28 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
                   required
+                  minLength={8}
+                  maxLength={128}
                 />
+                {mode === "signup" && (
+                  <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                    <li className={password.length >= 8 ? "text-green-500" : ""}>
+                      {password.length >= 8 ? "✓" : "•"} At least 8 characters
+                    </li>
+                    <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>
+                      {/[A-Z]/.test(password) ? "✓" : "•"} One uppercase letter
+                    </li>
+                    <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>
+                      {/[a-z]/.test(password) ? "✓" : "•"} One lowercase letter
+                    </li>
+                    <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>
+                      {/[0-9]/.test(password) ? "✓" : "•"} One digit
+                    </li>
+                    <li className={/[^A-Za-z0-9]/.test(password) ? "text-green-500" : ""}>
+                      {/[^A-Za-z0-9]/.test(password) ? "✓" : "•"} One special character
+                    </li>
+                  </ul>
+                )}
               </div>
               {mode === "signup" && (
                 <div>
@@ -117,6 +138,7 @@ export default function LoginPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
                     className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    maxLength={50}
                   />
                 </div>
               )}

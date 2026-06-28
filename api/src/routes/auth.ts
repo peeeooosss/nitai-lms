@@ -2,18 +2,25 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../db.js";
 import { generateToken, requireAuth } from "../middleware/auth.js";
+import { signupSchema, signinSchema } from "../validators/auth.js";
+import { ZodError } from "zod";
 
 const router = Router();
 
+function formatZodError(err: ZodError): string {
+  return err.errors.map((e) => e.message).join("; ");
+}
+
 router.post("/signup", async (req: Request, res: Response) => {
-  const { email, password, name } = req.body;
-  if (!email || !password) {
-    res.status(400).json({ code: "BAD_REQUEST", message: "Email and password required" });
+  const parsed = signupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: formatZodError(parsed.error) });
     return;
   }
+  const { email, password, name } = parsed.data;
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    res.status(409).json({ code: "CONFLICT", message: "Email already registered" });
+    res.status(400).json({ code: "BAD_REQUEST", message: "Registration failed" });
     return;
   }
   const passwordHash = await bcrypt.hash(password, 10);
@@ -25,11 +32,12 @@ router.post("/signup", async (req: Request, res: Response) => {
 });
 
 router.post("/signin", async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    res.status(400).json({ code: "BAD_REQUEST", message: "Email and password required" });
+  const parsed = signinSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: formatZodError(parsed.error) });
     return;
   }
+  const { email, password } = parsed.data;
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.passwordHash) {
     res.status(401).json({ code: "UNAUTHENTICATED", message: "Invalid email or password" });
